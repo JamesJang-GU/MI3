@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MI3 — Global Freight & Trade Intelligence</title>
+<style>
+:root{
+  --bg:#000; --panel:#0b0b0b; --panel2:#101010; --line:#2b2b2b; --line2:#1c1c1c;
+  --amber:#ffa500; --amber2:#ff8c00; --txt:#e6e6e6; --dim:#8f8f8f;
+  --up:#ff4d4d; --down:#58a6ff; --flat:#9a9a9a;
+  --green:#3fb950; --yellow:#d29922; --red:#f85149; --violet:#d2a8ff; --orange:#ff8c00;
+  --mono:Consolas,"Liberation Mono",Menlo,"Malgun Gothic","Apple SD Gothic Neo",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--mono);font-size:11px}
+body{overflow:hidden}
+button,input,select{font-family:var(--mono)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#333;border-radius:0}
+::-webkit-scrollbar-track{background:#0a0a0a}
+
+/* ---------- top bar ---------- */
+.topbar{height:48px;display:flex;align-items:center;gap:10px;padding:0 12px;
+  border-bottom:2px solid var(--amber);background:linear-gradient(180deg,#171200,#000);flex-wrap:wrap}
+.logo{color:#000;background:var(--amber);font-weight:700;font-size:13px;padding:2px 8px;letter-spacing:.1em}
+.brand{color:var(--amber);font-size:11px;letter-spacing:.12em;white-space:nowrap}
+.chip{border:1px solid var(--line);padding:1px 6px;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap}
+.chip.live{color:var(--green);border-color:#1d4a2a}
+.chip.pub{color:var(--down);border-color:#1d3a5a}
+.topmeta{margin-left:auto;display:flex;align-items:center;gap:10px;color:var(--dim);font-size:9px;flex-wrap:wrap}
+.topmeta b{color:var(--txt);font-weight:400}
+
+/* ---------- grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;padding:6px;
+  height:calc(100vh - 48px);grid-template-rows:minmax(168px,1.02fr) minmax(196px,1.22fr) minmax(196px,1.22fr) minmax(156px,1fr)}
+.panel{background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;min-width:0;overflow:hidden;position:relative}
+.panel>header{display:flex;align-items:center;gap:7px;padding:5px 7px;border-bottom:1px solid var(--line2);background:var(--panel2);min-height:27px}
+.code{color:#000;background:var(--amber);font-weight:700;font-size:9px;padding:1px 5px;letter-spacing:.08em;white-space:nowrap}
+.code.red{background:var(--red);color:#fff}.code.blue{background:var(--down);color:#000}
+.code.orange{background:var(--orange);color:#000}.code.violet{background:var(--violet);color:#000}
+.code.green{background:var(--green);color:#000}
+.ttl{color:var(--amber);font-size:10px;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{margin-left:auto;color:var(--dim);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel .body{padding:6px;display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow:hidden}
+.scroll{overflow:auto;min-height:0}
+.span3{grid-column:span 3}.span4{grid-column:span 4}.span5{grid-column:span 5}.span6{grid-column:span 6}.span7{grid-column:span 7}
+
+/* ---------- composite ---------- */
+.composite .body{display:grid;grid-template-columns:132px 1fr;gap:8px;align-items:center}
+.gauge{width:132px;height:132px;display:block}
+.comp-bars{display:flex;flex-direction:column;gap:5px;min-width:0}
+.cbar{display:grid;grid-template-columns:1fr 34px;gap:3px 5px;align-items:center}
+.cbar .lab{color:var(--dim);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cbar .val{text-align:right;font-size:10px;color:var(--txt);font-variant-numeric:tabular-nums}
+.cbar .track{grid-column:1/-1;height:3px;background:#1a1a1a;overflow:hidden}
+.cbar .fill{height:100%;background:var(--amber)}
+.bandline{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-top:2px}
+.bandline .b{font-size:10px;color:var(--amber);letter-spacing:.08em}
+.bandline .s{font-size:8px;color:var(--dim);text-align:right}
+
+/* ---------- map ---------- */
+.map .body{padding:0;position:relative;flex:1;min-height:0}
+.worldmap{width:100%;height:100%;display:block}
+.worldmap .land{fill:#161616;stroke:#2a2a2a;stroke-width:.35}
+.worldmap .grid{stroke:#121212;stroke-width:.5}
+.worldmap .route{fill:none;stroke:#3a2a10;stroke-width:.9;stroke-dasharray:3 4;opacity:.55}
+.worldmap .dot{cursor:pointer}
+.worldmap .dot circle.core{stroke:#000;stroke-width:.6}
+.worldmap .dot:hover circle.core{stroke:#fff;stroke-width:1}
+.worldmap .dot text{font-size:7px;fill:#cfcfcf;paint-order:stroke;stroke:#000;stroke-width:2px;letter-spacing:.02em}
+.worldmap .pulse{fill:none;stroke-width:1;opacity:.6;animation:pulse 2.4s infinite}
+@keyframes pulse{0%{r:5;opacity:.7}70%{r:12;opacity:0}100%{r:12;opacity:0}}
+.map-legend{position:absolute;left:7px;bottom:5px;display:flex;gap:8px;align-items:center;
+  background:rgba(0,0,0,.72);border:1px solid var(--line2);padding:2px 6px;font-size:8px;color:var(--dim)}
+.map-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:2px;vertical-align:middle}
+.map-note{position:absolute;right:7px;bottom:5px;background:rgba(0,0,0,.72);border:1px solid var(--line2);
+  padding:2px 6px;font-size:8px;color:var(--dim)}
+
+/* ---------- alerts ---------- */
+.alerts .body{padding:0;overflow:auto}
+.alerts{flex:1 1 auto}
+.alert{display:grid;grid-template-columns:5px 1fr;gap:6px;padding:4px 7px;border-bottom:1px solid #161616;cursor:pointer}
+.alert:hover{background:#141414}
+.alert .sev{width:5px;height:5px;border-radius:50%;margin-top:4px}
+.alert .t{font-size:9.5px;color:var(--txt);line-height:1.25}
+.alert .d{font-size:8px;color:var(--dim);line-height:1.3;margin-top:1px}
+.alert.critical .sev{background:var(--red);box-shadow:0 0 6px var(--red)}
+.alert.high .sev{background:var(--orange)}
+.alert.watch .sev{background:var(--yellow)}
+.alert.info .sev{background:var(--dim)}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;font-size:9px}
+th{position:sticky;top:0;background:var(--panel2);color:var(--dim);font-weight:400;text-align:left;
+  padding:3px 5px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:1}
+td{padding:3px 5px;border-bottom:1px solid #151515;white-space:nowrap}
+tr{cursor:pointer}
+tbody tr:hover{background:#151515}
+.scorebar{height:3px;background:#222;min-width:34px;overflow:hidden}
+.scorebar span{display:block;height:100%}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:0 4px;font-size:8px;border:1px solid;line-height:1.5}
+.badge.green{color:var(--green);border-color:#1d4a2a}.badge.yellow{color:var(--yellow);border-color:#4a3a10}
+.badge.red{color:var(--red);border-color:#4a1d1d}.badge.gray{color:var(--dim);border-color:var(--line)}
+.war{font-size:8px;text-transform:uppercase}
+.war.war_zone,.war.critical{color:var(--red)}.war.high{color:var(--orange)}
+.war.elevated{color:var(--yellow)}.war.normal{color:var(--dim)}
+
+/* ---------- metric cards ---------- */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:4px;min-height:0;overflow:auto;flex:1 1 auto}
+.cards3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.cards3 .card .val{font-size:12.5px}
+.cards3 .card .spark{height:18px}
+.cards4{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.cards4 .card .val{font-size:11.5px}
+.cards4 .card .spark{height:16px}
+.cards4 .card .asof{display:none}
+.card{background:var(--panel2);border:1px solid var(--line2);padding:4px 5px;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:1px}
+.card:hover{border-color:#4a3a10;background:#141008}
+.card .lab{color:var(--dim);font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .val{color:#fff;font-size:14px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .val em{font-style:normal;font-size:8px;color:var(--dim);margin-left:2px;font-weight:400}
+.card .chg{font-size:8px;font-variant-numeric:tabular-nums}
+.card .spark{height:22px;min-height:18px}
+.card .asof{color:#666;font-size:7.5px;text-align:right}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--flat)}
+.spark svg{width:100%;height:100%;display:block}
+
+/* ---------- countries ---------- */
+.country-list{display:flex;flex-direction:column;gap:2px;min-height:0;overflow:auto;flex:1 1 0}
+.crow{display:grid;grid-template-columns:26px 1fr 42px;gap:5px;align-items:center;padding:2px 3px;cursor:pointer;border-bottom:1px solid #141414}
+.crow:hover{background:#141414}
+.cc{font-size:8px;color:#000;background:var(--dim);text-align:center;font-weight:700}
+.crow .nm{font-size:9px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .sc{text-align:right;font-size:9px;font-variant-numeric:tabular-nums}
+.crow .track{grid-column:2/-1;height:2px;background:#1a1a1a;margin-top:-1px}
+.crow .fill{height:100%;background:var(--down)}
+.crow.low .fill{background:var(--red)}
+.sect{font-size:8px;color:var(--dim);letter-spacing:.08em;margin:2px 0 1px;display:flex;justify-content:space-between}
+.linkbtn{background:none;border:1px solid var(--line);color:var(--amber);font-size:8px;padding:1px 5px;cursor:pointer}
+.linkbtn:hover{background:var(--amber);color:#000}
+
+/* ---------- chain ---------- */
+.chainwrap{display:flex;flex-direction:column;gap:5px;height:100%}
+.chain-grid{display:grid;grid-template-columns:1fr 26px 1fr 26px 1fr 26px 1fr 26px 1fr;gap:2px;align-items:stretch;flex:1;min-height:0;width:100%}
+.cnode{background:var(--panel2);border:1px solid var(--line2);padding:4px 5px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+.cnode:hover{border-color:var(--amber)}
+.cnode .cl{font-size:8px;color:var(--dim);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cnode .cv{font-size:15px;font-weight:700;color:#fff;line-height:1}
+.cnode .ct{height:3px;background:#222;margin-top:2px}
+.cnode .ct span{display:block;height:100%}
+.carrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:#555;font-size:8px}
+.carrow b{color:var(--amber);font-weight:400;font-size:11px;line-height:1}
+.carrow small{font-size:6.5px;color:#666;text-align:center;line-height:1.1;max-width:26px}
+.chainnote{font-size:8px;color:var(--dim);line-height:1.35;border-top:1px dashed #222;padding-top:3px}
+.chainnote b{color:var(--amber);font-weight:400}
+
+/* ---------- insights ---------- */
+.insights{display:flex;flex-direction:column;gap:3px;min-height:0;overflow:auto;flex:1 1 auto}
+.insight{display:grid;grid-template-columns:5px 1fr;gap:5px;padding:3px 4px;border-bottom:1px solid #151515;cursor:pointer}
+.insight:hover{background:#141414}
+.insight .d{width:5px;height:5px;border-radius:50%;margin-top:3px}
+.insight .t{font-size:9px;line-height:1.3;color:var(--txt)}
+.insight .s{font-size:8px;color:var(--dim);line-height:1.3;margin-top:1px}
+
+/* ---------- drawer ---------- */
+.drawer{position:fixed;top:0;right:0;width:540px;max-width:100vw;height:100vh;background:#080808;
+  border-left:2px solid var(--amber);transform:translateX(102%);transition:transform .18s ease;z-index:60;
+  display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,.7)}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#151000,#080808)}
+.drawer-head .code{margin-top:2px}
+.drawer-head h2{margin:0;font-size:15px;color:#fff;font-weight:700;line-height:1.2}
+.drawer-head .sub{font-size:9px;color:var(--dim);margin-top:2px}
+.drawer-close{margin-left:auto;background:none;border:1px solid var(--line);color:var(--dim);font-size:12px;
+  width:24px;height:24px;cursor:pointer;line-height:1}
+.drawer-close:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.drawer-body{padding:10px 12px 30px;overflow:auto;flex:1}
+.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:55;opacity:0;pointer-events:none;transition:opacity .18s}
+.drawer-backdrop.open{opacity:1;pointer-events:auto}
+.dsec{margin:10px 0 4px;font-size:9px;color:var(--amber);letter-spacing:.1em;border-bottom:1px dashed #2a2a2a;padding-bottom:3px}
+.dgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.dstat{background:var(--panel2);border:1px solid var(--line2);padding:5px 6px;min-width:0}
+.dstat label{display:block;font-size:8px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dstat b{display:block;font-size:12px;color:#fff;font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dstat small{font-size:8px;color:var(--dim)}
+.dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.dlist li{font-size:9px;color:var(--txt);padding:2px 0;border-bottom:1px solid #141414;display:flex;justify-content:space-between;gap:8px}
+.dlist li span:last-child{color:var(--dim);text-align:right}
+.dtable td,.dtable th{font-size:9px}
+.dsource{font-size:8px;color:#666;line-height:1.4;margin-top:12px;border-top:1px solid var(--line2);padding-top:6px}
+.chart{width:100%;height:auto;display:block;background:#070707;border:1px solid var(--line2)}
+.chart-tip{position:fixed;z-index:100;background:#111;border:1px solid #3a3a3a;color:var(--txt);
+  font-size:9px;padding:3px 6px;pointer-events:none;opacity:0;transition:opacity .08s;line-height:1.35}
+.chart-tip b{color:var(--amber);font-weight:400}
+.empty{color:#555;font-size:9px;padding:8px 0}
+.pillrow{display:flex;flex-wrap:wrap;gap:3px}
+.pill{border:1px solid var(--line);padding:1px 5px;font-size:8px;color:var(--dim);cursor:pointer}
+.pill:hover{border-color:var(--amber);color:var(--amber)}
+.searchbox{width:100%;background:#0d0d0d;border:1px solid var(--line);color:var(--txt);font-size:10px;padding:5px 7px;outline:none}
+.searchbox:focus{border-color:var(--amber)}
+.full-list{max-height:none}
+.full-list .crow{grid-template-columns:30px 1fr 50px}
+
+/* ---------- responsive ---------- */
+@media(max-width:1250px){
+  body{overflow:auto}
+  .grid{height:auto;grid-template-rows:none;grid-auto-rows:minmax(190px,auto)}
+  .span3,.span4,.span5,.span6,.span7{grid-column:span 6}
+  .composite,.map,.alerts{grid-column:span 6}
+  .chokes,.freight{grid-column:span 6}
+  .energy,.macro,.countries{grid-column:span 6}
+  .chain,.insights{grid-column:span 6}
+  .composite .body{grid-template-columns:120px 1fr}
+  .gauge{width:120px;height:120px}
+}
+@media(max-width:760px){
+  .grid{grid-template-columns:1fr;padding:4px;gap:4px}
+  .span3,.span4,.span5,.span6,.span7,.composite,.map,.alerts,.chokes,.freight,.energy,.macro,.countries,.chain,.insights{grid-column:span 1}
+  .topbar{height:auto;min-height:48px;padding:5px 8px}
+  .topmeta{margin-left:0;width:100%}
+  .drawer{width:100vw}
+  .dgrid{grid-template-columns:1fr 1fr}
+  .chain-grid{grid-template-columns:1fr 18px 1fr 18px 1fr;grid-auto-rows:minmax(44px,auto)}
+  .chain-grid .cnode:nth-child(n+6){display:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="logo">MI3</span>
+  <span class="brand">GLOBAL FREIGHT &amp; TRADE INTELLIGENCE</span>
+  <span class="chip pub" id="srcchip">MI3 CORE</span>
+  <span class="chip" id="cpchip">13 CHOKEPOINTS</span>
+  <span class="chip" id="ctrychip">196 COUNTRIES</span>
+  <span class="topmeta">
+    <span id="clock">SEOUL --:--:--</span>
+    <span>SNAPSHOT <b id="snap">--</b></span>
+    <span>BUILT <b id="built">--</b></span>
+    <span id="modechip" class="chip pub">PUBLIC DATA</span>
+  </span>
+</header>
+
+<main class="grid" id="grid">
+  <section class="panel composite span3">
+    <header><span class="code">SYS</span><span class="ttl">SUPPLY CHAIN STRESS</span><span class="meta" id="compmeta">COMPOSITE</span></header>
+    <div class="body" id="composite"></div>
+  </section>
+
+  <section class="panel map span6">
+    <header><span class="code red">MAP</span><span class="ttl">GLOBAL CHOKEPOINT MONITOR</span><span class="meta">WORLDMONITOR OPEN DATA · CLICK A NODE</span></header>
+    <div class="body" id="map"></div>
+  </section>
+
+  <section class="panel alerts span3">
+    <header><span class="code red">ALERT</span><span class="ttl">SIGNAL FEED</span><span class="meta" id="alertmeta"></span></header>
+    <div class="body" id="alerts"></div>
+  </section>
+
+  <section class="panel chokes span7">
+    <header><span class="code red">CHOKE</span><span class="ttl">BOTTLENECK BOARD</span><button class="linkbtn" data-entity="category" data-id="chokepoint">ALL →</button><span class="meta">13 MARITIME CHOKEPOINTS · SCORE / WAR RISK / FLOW</span></header>
+    <div class="body scroll" id="choketable"></div>
+  </section>
+
+  <section class="panel freight span5">
+    <header><span class="code">SEA</span><span class="ttl">FREIGHT &amp; CAPACITY</span><span class="meta">MI2 · KSG / Linerlytica / Alphaliner / TAC</span></header>
+    <div class="body" id="freight"></div>
+  </section>
+
+  <section class="panel energy span4">
+    <header><span class="code orange">NRG</span><span class="ttl">ENERGY &amp; BUNKER</span><span class="meta">MI2 · Opinet / Ship &amp; Bunker</span></header>
+    <div class="body" id="energy"></div>
+  </section>
+
+  <section class="panel macro span4">
+    <header><span class="code violet">MACRO</span><span class="ttl">GLOBAL ECONOMY</span><span class="meta">MI2 · NY Fed / World Bank</span></header>
+    <div class="body" id="macro"></div>
+  </section>
+
+  <section class="panel countries span4">
+    <header><span class="code blue">CTRY</span><span class="ttl">RESILIENCE</span><span class="meta">WORLDMONITOR 5-FACTOR</span></header>
+    <div class="body" id="countries"></div>
+  </section>
+
+  <section class="panel chain span7">
+    <header><span class="code">FLOW</span><span class="ttl">TRANSMISSION CHAIN</span><span class="meta">BOTTLENECK → FREIGHT → ENERGY → MACRO → PRICES</span></header>
+    <div class="body" id="chain"></div>
+  </section>
+
+  <section class="panel insights span5">
+    <header><span class="code green">INS</span><span class="ttl">KEY INSIGHTS</span><span class="meta">AUTO-GENERATED</span></header>
+    <div class="body" id="insights"></div>
+  </section>
+</main>
+
+<div class="drawer-backdrop" id="backdrop" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div><div class="code" id="dcode">DETAIL</div><h2 id="dtitle">Detail</h2><div class="sub" id="dsub"></div></div>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="close">✕</button>
+  </div>
+  <div class="drawer-body" id="dbody"></div>
+</aside>
+
+<script src="data.js"></script>
+<script>
+'use strict';
+const U = window.UNIFIED;
+const MAP = window.WORLD_MAP;
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (v,d=2) => v==null || v==='' ? '-' : Number(v).toLocaleString('ko-KR',{maximumFractionDigits:d});
+const pct = v => v==null ? '-' : (v>0?'+':'') + Number(v).toFixed(1) + '%';
+const cls = v => v>0 ? 'up' : v<0 ? 'down' : 'flat';
+const arrow = v => v>0 ? '▲' : v<0 ? '▼' : '─';
+const STATUS = {green:'#3fb950', yellow:'#d29922', red:'#f85149'};
+const WAR = {normal:'#8f8f8f', elevated:'#d29922', high:'#ff8c00', critical:'#f85149', war_zone:'#ff4d4d', unspecified:'#8f8f8f'};
+const CAT = {freight:'#ffa500', energy:'#ff8c00', macro:'#d2a8ff', country:'#58a6ff', chokepoint:'#f85149'};
+const DN = new Intl.DisplayNames(['ko'], {type:'region'});
+const cname = code => { try { return DN.of(code) || code; } catch(e) { return code; } };
+const allMetrics = () => [...U.freight.metrics, ...U.energy.metrics, ...U.macro.metrics];
+const metricById = id => allMetrics().find(m => m.id === id);
+const cpById = id => U.chokepoints.items.find(c => c.id === id);
+const catColor = c => CAT[c] || '#ffa500';
+
+/* ---------------- charts ---------------- */
+let chartSeq = 0;
+function sparkline(points, color, w=120, h=28){
+  if(!points || points.length < 2) return '<div class="empty">no data</div>';
+  const vals = points.map(p=>p[1]).filter(v=>v!=null);
+  if(!vals.length) return '<div class="empty">no data</div>';
+  const min=Math.min(...vals), max=Math.max(...vals), range=(max-min)||1;
+  const xy = points.map((p,i)=>[i/(points.length-1)*w, h-2-((p[1]-min)/range)*(h-4)]);
+  const d = xy.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const area = `${d} L${w},${h} L0,${h} Z`;
+  const last = xy[xy.length-1];
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${area}" fill="${color}" opacity=".10"/><path d="${d}" fill="none" stroke="${color}" stroke-width="1.1"/><circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="1.6" fill="${color}"/></svg>`;
+}
+function chartSVG(points, color, opts={}){
+  if(!points || points.length < 2) return '<div class="empty">no data</div>';
+  const w=opts.w||520, h=opts.h||160, pad=opts.pad||{l:42,r:12,t:10,b:22};
+  const vals=points.map(p=>p[1]).filter(v=>v!=null);
+  if(!vals.length) return '<div class="empty">no data</div>';
+  const min=Math.min(...vals), max=Math.max(...vals), range=(max-min)||1;
+  const X=i=>pad.l+i/(points.length-1)*(w-pad.l-pad.r);
+  const Y=v=>pad.t+(1-(v-min)/range)*(h-pad.t-pad.b);
+  const d=points.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ');
+  const area=`${d} L${X(points.length-1).toFixed(1)},${h-pad.b} L${pad.l},${h-pad.b} Z`;
+  const id='g'+(chartSeq++);
+  const grid=[0,.5,1].map(f=>{const yy=pad.t+f*(h-pad.t-pad.b); const val=max-f*range;
+    return `<line x1="${pad.l}" y1="${yy.toFixed(1)}" x2="${w-pad.r}" y2="${yy.toFixed(1)}" stroke="#1b1b1b"/><text x="${pad.l-4}" y="${(yy+3).toFixed(1)}" text-anchor="end" fill="#777" font-size="8">${fmt(val,0)}</text>`}).join('');
+  const idxs=[0,Math.floor((points.length-1)/2),points.length-1];
+  const xlabels=idxs.map(i=>`<text x="${X(i).toFixed(1)}" y="${h-6}" text-anchor="${i===0?'start':i===points.length-1?'end':'middle'}" fill="#777" font-size="8">${esc(points[i][0])}</text>`).join('');
+  const last=points[points.length-1];
+  return `<svg viewBox="0 0 ${w} ${h}" class="chart" data-chart="${id}" data-points='${JSON.stringify(points)}' data-color="${color}" data-pad='${JSON.stringify(pad)}' data-w="${w}" data-h="${h}">
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".22"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${grid}${xlabels}
+    <path d="${area}" fill="url(#${id})"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.4"/>
+    <circle cx="${X(points.length-1).toFixed(1)}" cy="${Y(last[1]).toFixed(1)}" r="2.2" fill="${color}"/>
+    <line class="hoverline" x1="0" y1="${pad.t}" x2="0" y2="${h-pad.b}" stroke="#ffa500" stroke-width=".6" opacity="0"/>
+    <circle class="hoverdot" cx="0" cy="0" r="2.5" fill="${color}" opacity="0"/>
+    <rect class="hoverzone" x="${pad.l}" y="${pad.t}" width="${w-pad.l-pad.r}" height="${h-pad.t-pad.b}" fill="transparent"/>
+  </svg>`;
+}
+function attachChartHover(root=document){
+  $$('svg[data-chart]', root).forEach(svg=>{
+    if(svg.dataset.bound) return; svg.dataset.bound='1';
+    const pts=JSON.parse(svg.dataset.points), pad=JSON.parse(svg.dataset.pad);
+    const w=+svg.dataset.w, h=+svg.dataset.h;
+    const vals=pts.map(p=>p[1]).filter(v=>v!=null);
+    const min=Math.min(...vals), max=Math.max(...vals), range=(max-min)||1;
+    const X=i=>pad.l+i/(pts.length-1)*(w-pad.l-pad.r);
+    const Y=v=>pad.t+(1-(v-min)/range)*(h-pad.t-pad.b);
+    const line=svg.querySelector('.hoverline'), dot=svg.querySelector('.hoverdot'), zone=svg.querySelector('.hoverzone');
+    const tip=document.createElement('div'); tip.className='chart-tip'; document.body.appendChild(tip);
+    zone.addEventListener('mousemove', e=>{
+      const rect=svg.getBoundingClientRect();
+      const px=(e.clientX-rect.left)/rect.width*w;
+      let i=Math.round((px-pad.l)/(w-pad.l-pad.r)*(pts.length-1));
+      i=Math.max(0,Math.min(pts.length-1,i));
+      const cx=X(i), cy=Y(pts[i][1]);
+      line.setAttribute('x1',cx); line.setAttribute('x2',cx); line.setAttribute('opacity','.5');
+      dot.setAttribute('cx',cx); dot.setAttribute('cy',cy); dot.setAttribute('opacity','1');
+      tip.innerHTML=`<b>${esc(pts[i][0])}</b><br>${fmt(pts[i][1])}`;
+      tip.style.left=Math.min(window.innerWidth-120,e.clientX+12)+'px';
+      tip.style.top=Math.min(window.innerHeight-50,e.clientY+12)+'px';
+      tip.style.opacity='1';
+    });
+    zone.addEventListener('mouseleave', ()=>{line.setAttribute('opacity','0');dot.setAttribute('opacity','0');tip.style.opacity='0';});
+  });
+}
+
+/* ---------------- map ---------------- */
+function mapSVG(){
+  const W=1000,H=470;
+  const project=(lon,lat)=>[(lon+180)/360*W,(90-lat)/180*H];
+  const grat=[];
+  for(let lon=-150;lon<=150;lon+=30){const x=project(lon,0)[0];grat.push(`<line x1="${x}" y1="0" x2="${x}" y2="${H}"/>`)}
+  for(let lat=-60;lat<=60;lat+=30){const y=project(0,lat)[1];grat.push(`<line x1="0" y1="${y}" x2="${W}" y2="${y}"/>`)}
+  const routes=[
+    {name:'Asia–Europe via Suez', pts:[[121.5,31.2],[103.8,1.3],[79.8,6.5],[43.3,12.5],[32.3,30.5],[4.5,51.9]]},
+    {name:'Asia–US East via Panama', pts:[[121.5,31.2],[119.5,24.0],[-79.7,9.1],[-74,40.7]]},
+    {name:'Gulf–Asia oil', pts:[[56.25,26.56],[65,15],[79.8,6.5],[103.8,1.3]]},
+    {name:'Europe–Asia via Cape', pts:[[4.5,51.9],[-5.35,35.96],[18.5,-34.4],[79.8,6.5],[103.8,1.3]]},
+    {name:'US Gulf–Asia', pts:[[-95.3,29.7],[-79.7,9.1],[119.5,24.0],[121.5,31.2]]},
+    {name:'Black Sea–Med', pts:[[29.0,41.1],[29.0,36.0],[18.5,40.0],[-5.35,35.96]]}
+  ];
+  const rsvg=routes.map(r=>{
+    const pts=r.pts.map(([lon,lat])=>project(lon,lat).map(v=>v.toFixed(1)).join(',')).join(' ');
+    return `<polyline class="route" points="${pts}"><title>${esc(r.name)}</title></polyline>`;
+  }).join('');
+  const labelIds=['hormuz_strait','suez','malacca_strait','bab_el_mandeb','panama','taiwan_strait'];
+  const dots=U.chokepoints.items.map(c=>{
+    const [x,y]=project(c.lon,c.lat);
+    const col=STATUS[c.status]||'#888';
+    const r=3+Math.min(4,c.score/22);
+    const show=labelIds.includes(c.id);
+    const anchor=x>820?'end':x<180?'start':'middle';
+    const dx=x>820?-7:x<180?7:0;
+    return `<g class="dot" data-entity="chokepoint" data-id="${esc(c.id)}">
+      <title>${esc(c.name)} · score ${c.score} · ${esc(c.status)} · ${esc(c.war_risk_tier)}</title>
+      ${c.score>=70?`<circle class="pulse" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" stroke="${col}"/>`:''}
+      <circle class="core" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${col}" opacity=".92"/>
+      ${show?`<text x="${(x+dx).toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="${anchor}">${esc(c.name)}</text>`:''}
+    </g>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="worldmap" preserveAspectRatio="xMidYMid slice">
+    <rect width="${W}" height="${H}" fill="#050505"/>
+    <g class="grid">${grat.join('')}</g>
+    <path class="land" d="${MAP.land_path}"/>
+    <g>${rsvg}</g>
+    <g>${dots}</g>
+  </svg>
+  <div class="map-legend">
+    <span><i style="background:${STATUS.green}"></i>green</span>
+    <span><i style="background:${STATUS.yellow}"></i>yellow</span>
+    <span><i style="background:${STATUS.red}"></i>red</span>
+    <span>· node size = score</span>
+  </div>
+  <div class="map-note">13 chokepoints · WorldMonitor open data · click node</div>`;
+}
+
+/* ---------------- renderers ---------------- */
+function renderComposite(){
+  const c=U.composite;
+  const r=52, circ=2*Math.PI*r, off=circ*(1-c.score/100);
+  const color=c.score>=75?'#f85149':c.score>=60?'#ff8c00':c.score>=40?'#d29922':'#3fb950';
+  const bars=c.components.map(x=>{
+    const col=x.id==='chokepoint'?'#f85149':x.id==='freight'?'#ffa500':x.id==='energy'?'#ff8c00':'#d2a8ff';
+    return `<div class="cbar"><span class="lab">${esc(x.label)}</span><span class="val">${x.score.toFixed(1)}</span><span class="track"><span class="fill" style="width:${x.score}%;background:${col}"></span></span></div>`;
+  }).join('');
+  $('#composite').innerHTML=`
+    <svg class="gauge" viewBox="0 0 140 140">
+      <circle cx="70" cy="70" r="${r}" fill="none" stroke="#1c1c1c" stroke-width="9"/>
+      <circle cx="70" cy="70" r="${r}" fill="none" stroke="${color}" stroke-width="9" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 70 70)"/>
+      <text x="70" y="68" text-anchor="middle" fill="#fff" font-size="28" font-weight="700">${c.score.toFixed(1)}</text>
+      <text x="70" y="84" text-anchor="middle" fill="${color}" font-size="8" letter-spacing="1">${esc(c.band.toUpperCase())}</text>
+      <text x="70" y="99" text-anchor="middle" fill="#777" font-size="6.5">SUPPLY CHAIN STRESS</text>
+    </svg>
+    <div class="comp-bars">${bars}
+      <div class="bandline"><span class="b">0.40 CHOKE · 0.25 FREIGHT · 0.20 ENERGY · 0.15 MACRO</span></div>
+    </div>`;
+  $('#compmeta').textContent='v1 · '+U.meta.snapshot_date;
+  const el=$('#composite'); el.style.cursor='pointer'; el.dataset.entity='category'; el.dataset.id='composite';
+}
+
+function renderMap(){ $('#map').innerHTML=mapSVG(); }
+
+function renderAlerts(){
+  const a=U.composite.alerts;
+  $('#alertmeta').textContent=a.length+' SIGNALS';
+  $('#alerts').innerHTML=`<div class="alerts">${a.map(x=>`
+    <div class="alert ${x.severity}" data-entity="alert" data-id="${esc(x.title)}">
+      <span class="sev"></span>
+      <div><div class="t">${esc(x.title)}</div><div class="d">${esc(x.detail)}</div></div>
+    </div>`).join('')}</div>`;
+}
+
+function renderChoketable(){
+  const items=[...U.chokepoints.items].sort((a,b)=>b.score-a.score);
+  const rows=items.map(c=>{
+    const col=STATUS[c.status]||'#888';
+    return `<tr data-entity="chokepoint" data-id="${esc(c.id)}">
+      <td><b style="color:#fff;font-weight:400">${esc(c.name)}</b></td>
+      <td style="min-width:74px"><div style="display:flex;align-items:center;gap:4px"><span class="num" style="min-width:18px;color:${col}">${c.score}</span><span class="scorebar"><span style="width:${c.score}%;background:${col}"></span></span></div></td>
+      <td><span class="badge ${c.status}">${esc(c.status)}</span></td>
+      <td><span class="war ${esc(c.war_risk_tier)}">${esc(c.war_risk_tier)}</span></td>
+      <td class="num" style="color:${c.flow_ratio!=null&&c.flow_ratio<0.85?'var(--red)':'var(--txt)'}">${c.flow_ratio!=null?(c.flow_ratio*100).toFixed(0)+'%':'-'}</td>
+      <td class="num ${cls(c.transit_wow_change_pct)}">${c.transit_wow_change_pct!=null?arrow(c.transit_wow_change_pct)+' '+Math.abs(c.transit_wow_change_pct).toFixed(1)+'%':'-'}</td>
+    </tr>`;
+  }).join('');
+  $('#choketable').innerHTML=`<table><thead><tr><th>Chokepoint</th><th>Score</th><th>Status</th><th>War risk</th><th class="num">Flow</th><th class="num">WoW</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function metricCard(m){
+  const col=catColor(m.category);
+  return `<article class="card" data-entity="metric" data-id="${esc(m.id)}">
+    <div class="lab">${esc(m.label)}</div>
+    <div class="val">${fmt(m.value)}<em>${esc(m.unit)}</em></div>
+    <div class="chg ${cls(m.pct)}">${arrow(m.pct)} ${pct(m.pct)}</div>
+    <div class="spark">${sparkline(m.series,col)}</div>
+    <div class="asof">${esc(m.asof||'')}</div>
+  </article>`;
+}
+function renderFreight(){
+  const ms=U.freight.metrics;
+  $('#freight').innerHTML=`<div class="cards cards4">${ms.map(metricCard).join('')}</div>`;
+}
+function renderEnergy(){
+  const ms=U.energy.metrics;
+  $('#energy').innerHTML=`<div class="cards cards3">${ms.map(metricCard).join('')}</div>`;
+}
+function renderMacro(){
+  const ms=U.macro.metrics;
+  $('#macro').innerHTML=`<div class="cards cards3">${ms.map(metricCard).join('')}</div>`;
+}
+
+function renderCountries(){
+  const items=U.countries.items.filter(x=>x.avg!=null);
+  const top=items.slice(0,5), bottom=items.slice(-5).reverse();
+  const row=x=>`<div class="crow ${x.avg<50?'low':''}" data-entity="country" data-id="${esc(x.code)}">
+    <span class="cc">${esc(x.code)}</span><span class="nm">${esc(cname(x.code))}</span><span class="sc">${x.avg.toFixed(1)}</span>
+    <span class="track"><span class="fill" style="width:${x.avg}%"></span></span></div>`;
+  $('#countries').innerHTML=`
+    <div class="sect"><span>MOST RESILIENT</span><span>AVG / 100</span></div>
+    <div class="country-list">${top.map(row).join('')}</div>
+    <div class="sect" style="margin-top:3px"><span>LEAST RESILIENT</span><button class="linkbtn" data-entity="country-list">ALL 196 →</button></div>
+    <div class="country-list">${bottom.map(row).join('')}</div>`;
+}
+
+function renderChain(){
+  const nodes=U.chain.nodes, links=U.chain.links;
+  const color=n=>n.id==='chokepoint'?'#f85149':n.id==='freight'?'#ffa500':n.id==='energy'?'#ff8c00':n.id==='macro'?'#d2a8ff':'#58a6ff';
+  const nodeHTML=n=>`<div class="cnode" data-entity="chain" data-id="${esc(n.id)}">
+    <div class="cl">${esc(n.label)}</div><div class="cv">${n.score.toFixed(1)}</div>
+    <div class="ct"><span style="width:${n.score}%;background:${color(n)}"></span></div></div>`;
+  const arrowHTML=(a,b)=>{
+    const l=links.find(x=>x.from===a&&x.to===b);
+    return `<div class="carrow"><b>→</b><small>${l?esc(l.label):''}</small></div>`;
+  };
+  const chain=`${nodeHTML(nodes[0])}${arrowHTML('chokepoint','freight')}${nodeHTML(nodes[1])}${arrowHTML('freight','energy')}${nodeHTML(nodes[2])}${arrowHTML('energy','macro')}${nodeHTML(nodes[3])}${arrowHTML('macro','consumer')}${nodeHTML(nodes[4])}`;
+  const strongest=[...links].sort((a,b)=>b.weight-a.weight)[0];
+  const top=[...U.composite.components].sort((a,b)=>b.score-a.score)[0];
+  $('#chain').innerHTML=`<div class="chainwrap">
+    <div class="chain-grid">${chain}</div>
+    <div class="chainnote">가장 강한 전이: <b>${esc(strongest.label)}</b> (weight ${strongest.weight}) · 현재 최고 압력: <b>${esc(top.label)} ${top.score.toFixed(1)}</b> · 화살표를 클릭하면 상세 경로가 열립니다.</div>
+  </div>`;
+}
+
+function renderInsights(){
+  const items=[];
+  const top=[...U.chokepoints.items].sort((a,b)=>b.score-a.score)[0];
+  items.push({sev:'critical', t:`${top.name} ${top.score}점 · ${top.war_risk_tier}`, s:`공급망 병목 1위 · 혼잡 ${top.congestion_level} · flow ${top.flow_ratio!=null?(top.flow_ratio*100).toFixed(0)+'%':'-'}`, entity:{type:'chokepoint',id:top.id}});
+  const scfi=metricById('scfi'), bdi=metricById('bdi'), tac=metricById('tac');
+  if(scfi) items.push({sev:'watch', t:`SCFI ${fmt(scfi.value)} · 1년 z ${zscore(scfi.series).toFixed(2)}`, s:`BDI ${bdi?pct(bdi.pct):'-'} · TAC ${tac?pct(tac.pct):'-'} · 운임/항공 운송 압력`, entity:{type:'metric',id:'scfi'}});
+  const brent=metricById('brent'), vlsfo=metricById('vlsfo_singapore');
+  if(brent) items.push({sev:brent.pct<-5?'high':'watch', t:`Brent ${fmt(brent.value)} · ${pct(brent.pct)}`, s:`VLSFO Singapore ${vlsfo?fmt(vlsfo.value)+' $/ton ('+pct(vlsfo.pct)+')':'-'} · 유가/벙커 비용`, entity:{type:'metric',id:'brent'}});
+  const gscpi=metricById('gscpi'), cpi=metricById('cpi');
+  if(gscpi) items.push({sev:gscpi.value>=1.5?'high':'watch', t:`GSCPI ${fmt(gscpi.value)} · World CPI ${cpi?fmt(cpi.value)+'%':'-'}`, s:`공급망 압력과 물가. GDP ${metricById('gdp')?fmt(metricById('gdp').value)+'%':'-'}`, entity:{type:'metric',id:'gscpi'}});
+  const low=U.countries.items.filter(x=>x.avg!=null).slice(-1)[0];
+  if(low) items.push({sev:'info', t:`최저 회복력: ${cname(low.code)} ${low.avg.toFixed(1)}`, s:'5-factor scorecard · 식량/에너지/인구/기술/방어', entity:{type:'country',id:low.code}});
+  $('#insights').innerHTML=`<div class="insights">${items.map(x=>`
+    <div class="insight" data-entity="${x.entity.type}" data-id="${esc(x.entity.id)}">
+      <span class="d" style="background:${x.sev==='critical'?'var(--red)':x.sev==='high'?'var(--orange)':x.sev==='watch'?'var(--yellow)':'var(--dim)'}"></span>
+      <div><div class="t">${esc(x.t)}</div><div class="s">${esc(x.s)}</div></div>
+    </div>`).join('')}</div>`;
+}
+
+function zscore(points){
+  const v=points.map(p=>p[1]).filter(x=>x!=null);
+  if(v.length<3) return 0;
+  const m=v.reduce((a,b)=>a+b,0)/v.length;
+  const s=Math.sqrt(v.reduce((a,b)=>a+(b-m)*(b-m),0)/v.length);
+  return s?(v[v.length-1]-m)/s:0;
+}
+
+/* ---------------- detail drawer ---------------- */
+function openDetail(type,id){
+  let code='DETAIL', title='', sub='', body='';
+  if(type==='chokepoint'){
+    const c=cpById(id); if(!c) return;
+    code='CHOKEPOINT'; title=c.name; sub=`${c.id} · ${c.war_risk_tier} · ${c.congestion_level}`;
+    body=chokepointDetail(c);
+  } else if(type==='metric'){
+    const m=metricById(id); if(!m) return;
+    code=m.category.toUpperCase(); title=m.label; sub=`${m.source} · ${m.asof||''}`;
+    body=metricDetail(m);
+  } else if(type==='country'){
+    const c=U.countries.items.find(x=>x.code===id); if(!c) return;
+    code='COUNTRY'; title=cname(c.code); sub=`${c.code} · 5-factor resilience`;
+    body=countryDetail(c);
+  } else if(type==='country-list'){
+    code='COUNTRY'; title='Resilience ranking'; sub='WorldMonitor Five-Factor Scorecard · 196 countries';
+    body=countryListDetail();
+  } else if(type==='alert'){
+    const a=U.composite.alerts.find(x=>x.title===id); if(!a) return;
+    code='ALERT'; title=a.title; sub=`${a.severity} · ${a.category}`;
+    body=alertDetail(a);
+  } else if(type==='chain'){
+    const n=U.chain.nodes.find(x=>x.id===id); if(!n) return;
+    code='CHAIN'; title=n.label; sub=`transmission node · score ${n.score}`;
+    body=chainDetail(n);
+  } else if(type==='live'){
+    code='LIVE'; title='WorldMonitor live data'; sub='API key mode'; body=liveDetail();
+  } else if(type==='category'){
+    if(id==='composite'){ code='SYSTEM'; title='Supply Chain Stress Index'; sub='composite methodology'; body=compositeDetail(); }
+    else if(id==='freight'){ code='FREIGHT'; title='Freight & capacity'; sub='MI2 · KSG / Linerlytica / Alphaliner / TAC'; body=categoryDetail('freight'); }
+    else if(id==='energy'){ code='ENERGY'; title='Energy & bunker'; sub='MI2 · Opinet / Ship & Bunker'; body=categoryDetail('energy'); }
+    else if(id==='macro'){ code='MACRO'; title='Global economy'; sub='MI2 · NY Fed / World Bank'; body=categoryDetail('macro'); }
+    else if(id==='chokepoint'){ code='CHOKEPOINT'; title='All chokepoints'; sub='WorldMonitor open data'; body=chokepointListDetail(); }
+  }
+  $('#dcode').textContent=code; $('#dtitle').textContent=title; $('#dsub').textContent=sub;
+  $('#dbody').innerHTML=body;
+  $('#drawer').classList.add('open'); $('#backdrop').classList.add('open');
+  attachChartHover($('#dbody'));
+  $('#dbody').scrollTop=0;
+}
+function closeDrawer(){ $('#drawer').classList.remove('open'); $('#backdrop').classList.remove('open'); }
+
+function chokepointDetail(c){
+  const col=STATUS[c.status]||'#888';
+  const hist=c.history||[];
+  const scorePts=hist.map(h=>[h.date,h.score]);
+  const flowPts=hist.filter(h=>h.flow_ratio!=null).map(h=>[h.date,Math.round(h.flow_ratio*1000)/10]);
+  const related=['scfi','bdi','tac'].map(metricById).filter(Boolean);
+  return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="font-size:34px;font-weight:700;color:${col};line-height:1">${c.score}<span style="font-size:12px;color:#777">/100</span></div>
+      <div><span class="badge ${c.status}">${esc(c.status)}</span> <span class="war ${esc(c.war_risk_tier)}">${esc(c.war_risk_tier)}</span>
+      <div style="font-size:8px;color:#777;margin-top:2px">WorldMonitor composite disruption score</div></div>
+    </div>
+    <div class="dgrid">
+      <div class="dstat"><label>Congestion</label><b>${esc(c.congestion_level||'-')}</b></div>
+      <div class="dstat"><label>Active warnings</label><b>${c.active_warnings??'-'}</b></div>
+      <div class="dstat"><label>AIS disruptions</label><b>${c.ais_disruptions??'-'}</b></div>
+      <div class="dstat"><label>Transit today</label><b>${c.transit_today_total??'-'}</b><small>tanker ${c.transit_today_tanker??'-'} · cargo ${c.transit_today_cargo??'-'}</small></div>
+      <div class="dstat"><label>WoW transit</label><b class="${cls(c.transit_wow_change_pct)}">${c.transit_wow_change_pct!=null?arrow(c.transit_wow_change_pct)+' '+Math.abs(c.transit_wow_change_pct).toFixed(1)+'%':'-'}</b></div>
+      <div class="dstat"><label>Flow ratio</label><b style="color:${c.flow_ratio!=null&&c.flow_ratio<0.85?'var(--red)':'#fff'}">${c.flow_ratio!=null?(c.flow_ratio*100).toFixed(0)+'%':'-'}</b><small>${esc(c.flow_source||'no estimate')}</small></div>
+    </div>
+    <div class="dsec">SCORE HISTORY</div>
+    ${chartSVG(scorePts, col, {w:500,h:150})}
+    <div class="dsec">FLOW RATIO (% of baseline)</div>
+    ${flowPts.length?chartSVG(flowPts,'#58a6ff',{w:500,h:120}):'<div class="empty">no flow estimate</div>'}
+    <div class="dsec">EXPOSED ROUTES</div>
+    <ul class="dlist">${(c.routes||[]).map(r=>`<li><span>${esc(r)}</span></li>`).join('')||'<li><span>-</span></li>'}</ul>
+    <div class="dsec">BYPASS / MITIGATION</div>
+    <div style="font-size:9px;color:var(--txt);line-height:1.4">${esc(c.bypass||'No published bypass.')}</div>
+    <div class="dsec">RELATED FREIGHT SIGNALS</div>
+    <div class="dgrid">${related.map(m=>`<div class="dstat" data-entity="metric" data-id="${m.id}" style="cursor:pointer"><label>${esc(m.label)}</label><b>${fmt(m.value)}<small> ${esc(m.unit)}</small></b><small class="${cls(m.pct)}">${arrow(m.pct)} ${pct(m.pct)}</small></div>`).join('')}</div>
+    <div class="dsource">Source: WorldMonitor Chokepoint Status (open data, CC-BY-4.0). ${esc(U.chokepoints.attribution)}<br>Snapshot ${esc(U.chokepoints.snapshot_date)} · generated ${esc(U.chokepoints.generated_at)}${U.chokepoints.upstream_unavailable?' · upstream unavailable':''}</div>`;
+}
+
+function metricDetail(m){
+  const col=catColor(m.category);
+  const related=allMetrics().filter(x=>x.category===m.category && x.id!==m.id);
+  let extra='';
+  if(m.id==='scfi') extra=tableHTML('SCFI REGIONS', ['Region','Value','%'], U.freight.details.scfi_regions.map(r=>[r.region,fmt(r.value),pct(r.pct)]));
+  if(m.id==='bdi') extra=tableHTML('BDI SUB-INDICES', ['Index','Value','%'], U.freight.details.bdi_subindices.map(r=>[r.region,fmt(r.value),pct(r.pct)]));
+  if(m.id==='tac') extra=tableHTML('TAC ROUTES', ['Route','Value','%'], U.freight.details.tac_routes.map(r=>[r.route,fmt(r.value),pct(r.pct)]));
+  if(m.id==='fleet_teu'||m.id==='fleet_ships') extra=tableHTML('FLEET STATUS', ['Status','Ships','TEU'], U.freight.details.fleet_status.map(r=>[r.status,fmt(r.ships,0),fmt(r.teu,0)]));
+  if(m.id==='top100_teu'||m.id==='active_ships') extra=tableHTML('TOP OPERATORS', ['#','Operator','TEU','Share'], U.freight.details.top_operators.map(r=>[r.rank,r.name,fmt(r.teu,0),r.share!=null?r.share+'%':'-']));
+  if(m.id==='brent'||m.id==='wti'||m.id==='dubai') extra=tableHTML('CRUDE COMPARISON', ['Grade','Value','%'], U.energy.metrics.filter(x=>['brent','wti','dubai'].includes(x.id)).map(x=>[x.label,fmt(x.value),pct(x.pct)]));
+  if(m.id.startsWith('vlsfo')) extra=tableHTML('VLSFO PORTS', ['Port','$/ton','%'], U.energy.metrics.filter(x=>x.id.startsWith('vlsfo')).map(x=>[x.label,fmt(x.value),pct(x.pct)]));
+  return `
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+      <div style="font-size:28px;font-weight:700;color:#fff;line-height:1">${fmt(m.value)}<span style="font-size:11px;color:#777"> ${esc(m.unit)}</span></div>
+      <div class="${cls(m.pct)}" style="font-size:11px">${arrow(m.pct)} ${pct(m.pct)}</div>
+    </div>
+    <div class="dgrid">
+      <div class="dstat"><label>Previous</label><b>${fmt(m.prev)}</b></div>
+      <div class="dstat"><label>Change</label><b class="${cls(m.change)}">${m.change!=null?(m.change>0?'+':'')+fmt(m.change):'-'}</b></div>
+      <div class="dstat"><label>As of</label><b>${esc(m.asof||'-')}</b></div>
+    </div>
+    <div class="dsec">1-YEAR SERIES</div>
+    ${chartSVG(m.series, col, {w:500,h:170})}
+    ${extra}
+    <div class="dsec">RELATED</div>
+    <div class="pillrow">${related.map(x=>`<span class="pill" data-entity="metric" data-id="${x.id}">${esc(x.label)} ${fmt(x.value)}</span>`).join('')}</div>
+    <div class="dsource">Source: ${esc(m.source)} · MI2 SQLite snapshot. Click a related metric to inspect its series.</div>`;
+}
+function tableHTML(title, head, rows){
+  return `<div class="dsec">${esc(title)}</div><table class="dtable"><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function countryDetail(c){
+  const pillars=[['food','Food'],['energy','Energy'],['demographics','Demographics'],['technology','Technology'],['defense','Defense']];
+  const avg=c.avg;
+  return `
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+      <div style="font-size:30px;font-weight:700;color:#fff;line-height:1">${avg!=null?avg.toFixed(1):'-'}<span style="font-size:11px;color:#777">/100</span></div>
+      <div style="font-size:9px;color:#777">5-factor resilience average</div>
+    </div>
+    <div class="dsec">PILLARS</div>
+    ${pillars.map(([k,label])=>{
+      const v=c.pillars[k];
+      return `<div style="margin:5px 0"><div style="display:flex;justify-content:space-between;font-size:9px"><span>${label}</span><span style="color:${v==null?'#666':'#fff'}">${v!=null?v.toFixed(1):'-'}</span></div><div class="scorebar" style="height:4px"><span style="width:${v||0}%;background:${v==null?'#333':v>=70?'#3fb950':v>=40?'#d29922':'#f85149'}"></span></div></div>`;
+    }).join('')}
+    <div class="dsec">BANDS</div>
+    <ul class="dlist">${pillars.map(([k,label])=>`<li><span>${label}</span><span>${esc(c.bands[k]||'-')}</span></li>`).join('')}</ul>
+    <div class="dsec">COMPARISON</div>
+    <div class="country-list">${U.countries.selected.map(code=>U.countries.items.find(x=>x.code===code)).filter(x=>x&&x.avg!=null).map(x=>`
+      <div class="crow ${x.avg<50?'low':''}" data-entity="country" data-id="${esc(x.code)}">
+        <span class="cc">${esc(x.code)}</span><span class="nm">${esc(cname(x.code))}</span><span class="sc">${x.avg.toFixed(1)}</span>
+        <span class="track"><span class="fill" style="width:${x.avg}%"></span></span>
+      </div>`).join('')}</div>
+    <div class="dsource">Source: WorldMonitor Five-Factor Scorecard · ${esc(U.countries.methodology_version||'')} · computed ${esc(U.countries.computed_at||'-')} · coverage varies by pillar.</div>`;
+}
+
+function countryListDetail(){
+  return `<div style="margin-bottom:6px"><input class="searchbox" id="ctrysearch" placeholder="Search country / code…" oninput="filterCountries(this.value)"></div>
+    <div class="country-list full-list" id="fullcountries">${countryRows(U.countries.items.filter(x=>x.avg!=null))}</div>
+    <div class="dsource">Source: WorldMonitor Five-Factor Scorecard. Average of available pillar sub-scores (food, energy, demographics, technology, defense). Coverage varies; a low average can reflect missing evidence, not only low capability.</div>`;
+}
+function countryRows(items){
+  return items.map(x=>`<div class="crow ${x.avg<50?'low':''}" data-entity="country" data-id="${esc(x.code)}">
+    <span class="cc">${esc(x.code)}</span><span class="nm">${esc(cname(x.code))}</span><span class="sc">${x.avg.toFixed(1)}</span>
+    <span class="track"><span class="fill" style="width:${x.avg}%"></span></span></div>`).join('');
+}
+function filterCountries(q){
+  const el=$('#fullcountries'); if(!el) return;
+  q=q.trim().toLowerCase();
+  const items=U.countries.items.filter(x=>x.avg!=null && (!q || x.code.toLowerCase().includes(q) || cname(x.code).toLowerCase().includes(q)));
+  el.innerHTML=countryRows(items);
+}
+
+function alertDetail(a){
+  const ent=a.entity||{};
+  return `<div style="font-size:11px;line-height:1.5;color:var(--txt)">${esc(a.detail)}</div>
+    <div class="dsec">SEVERITY</div>
+    <div class="dgrid"><div class="dstat"><label>Level</label><b style="color:${a.severity==='critical'?'var(--red)':a.severity==='high'?'var(--orange)':'var(--yellow)'}">${esc(a.severity)}</b></div>
+    <div class="dstat"><label>Category</label><b>${esc(a.category)}</b></div>
+    <div class="dstat"><label>Signal</label><b>${esc(a.title)}</b></div></div>
+    <div class="dsec">OPEN ENTITY</div>
+    <div class="pillrow">${ent.type?`<span class="pill" data-entity="${esc(ent.type)}" data-id="${esc(ent.id)}">Open ${esc(ent.type)} →</span>`:''}</div>
+    <div class="dsource">Auto-generated from the current snapshot. Rule thresholds: chokepoint score ≥70 critical, ≥40 high, ≥20 watch; flow <85% high; WoW ≤ -15% watch; Brent |pct| ≥5% high; GSCPI ≥1.5 high.</div>`;
+}
+
+function chainDetail(n){
+  const map={chokepoint:'composite',freight:'freight',energy:'energy',macro:'macro',consumer:'macro'};
+  const target=map[n.id]||'composite';
+  return `<div style="font-size:30px;font-weight:700;color:#fff;line-height:1">${n.score.toFixed(1)}<span style="font-size:11px;color:#777">/100</span></div>
+    <div style="font-size:9px;color:#777;margin-top:2px">Transmission node score</div>
+    <div class="dsec">CONNECTED LINKS</div>
+    <ul class="dlist">${U.chain.links.filter(l=>l.from===n.id||l.to===n.id).map(l=>`<li><span>${esc(l.from)} → ${esc(l.to)}</span><span>${esc(l.label)} · w ${l.weight}</span></li>`).join('')}</ul>
+    <div class="dsec">OPEN DETAIL</div>
+    <div class="pillrow"><span class="pill" data-entity="category" data-id="${target}">Open ${target} →</span></div>
+    <div class="dsource">Chain weights are a transparent heuristic (0–1), not a fitted econometric model. They encode the direction and relative strength of the transmission channel.</div>`;
+}
+
+function compositeDetail(){
+  return `<div style="font-size:11px;line-height:1.5;color:var(--txt)">복합 스트레스 지수는 4개 pillar의 가중 평균입니다. 각 pillar는 1년 z-score와 현재 수준을 조합해 0–100으로 정규화합니다.</div>
+    <div class="dsec">COMPONENTS</div>
+    ${U.composite.components.map(c=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:9px"><span>${esc(c.label)}</span><span>${c.score.toFixed(1)} · w ${c.weight}</span></div><div class="scorebar" style="height:5px"><span style="width:${c.score}%;background:${c.id==='chokepoint'?'#f85149':c.id==='freight'?'#ffa500':c.id==='energy'?'#ff8c00':'#d2a8ff'}"></span></div><div style="font-size:8px;color:#777;margin-top:2px">${esc(c.summary)}</div></div>`).join('')}
+    <div class="dsec">METHODOLOGY</div>
+    <ul class="dlist">${Object.entries(U.meta.methodology).map(([k,v])=>`<li><span>${esc(k)}</span><span>${esc(v)}</span></li>`).join('')}</ul>
+    <div class="dsec">TOP SIGNALS</div>
+    <div class="pillrow">${U.composite.alerts.slice(0,8).map(a=>`<span class="pill" data-entity="alert" data-id="${esc(a.title)}">${esc(a.title)}</span>`).join('')}</div>
+    <div class="dsource">Sources: MI2 (freight/oil/macro) + WorldMonitor chokepoint open data (CC-BY-4.0) + WorldMonitor Five-Factor Scorecard. Composite is an original heuristic for this dashboard, not a WorldMonitor or MI2 official index.</div>`;
+}
+
+function categoryDetail(cat){
+  const ms=cat==='freight'?U.freight.metrics:cat==='energy'?U.energy.metrics:U.macro.metrics;
+  const col=catColor(cat);
+  return `<div class="dgrid">${ms.map(m=>`<div class="dstat" data-entity="metric" data-id="${m.id}" style="cursor:pointer"><label>${esc(m.label)}</label><b>${fmt(m.value)}<small> ${esc(m.unit)}</small></b><small class="${cls(m.pct)}">${arrow(m.pct)} ${pct(m.pct)}</small></div>`).join('')}</div>
+    ${ms.map(m=>`<div class="dsec">${esc(m.label)}</div>${chartSVG(m.series,col,{w:500,h:130})}`).join('')}
+    <div class="dsource">Source: MI2 SQLite snapshot. Click any metric for its full series and related tables.</div>`;
+}
+
+function chokepointListDetail(){
+  const items=[...U.chokepoints.items].sort((a,b)=>b.score-a.score);
+  return `<table class="dtable"><thead><tr><th>Chokepoint</th><th>Score</th><th>Status</th><th>War</th><th>Flow</th><th>WoW</th></tr></thead><tbody>${items.map(c=>`<tr data-entity="chokepoint" data-id="${esc(c.id)}"><td>${esc(c.name)}</td><td style="color:${STATUS[c.status]}">${c.score}</td><td>${esc(c.status)}</td><td>${esc(c.war_risk_tier)}</td><td>${c.flow_ratio!=null?(c.flow_ratio*100).toFixed(0)+'%':'-'}</td><td class="${cls(c.transit_wow_change_pct)}">${c.transit_wow_change_pct!=null?pct(c.transit_wow_change_pct):'-'}</td></tr>`).join('')}</tbody></table>
+    <div class="dsource">WorldMonitor Chokepoint Status · CC-BY-4.0 · snapshot ${esc(U.chokepoints.snapshot_date)} · ${esc(U.chokepoints.attribution)}</div>`;
+}
+
+
+function liveDetail(){
+  const L=U.live;
+  if(!L) return '<div class="empty">No live data. Set WORLDMONITOR_API_KEY and run fetch_worldmonitor.py.</div>';
+  const ep=L.endpoints||{};
+  const parts=[];
+  parts.push(`<div style="font-size:9px;color:var(--dim);line-height:1.5">Fetched ${esc(L.fetched_at||'-')} · ${Object.keys(ep).length} endpoint groups · ${Object.keys(L.errors||{}).length} errors</div>`);
+  const cp=ep.chokepoint_status;
+  if(cp&&cp.chokepoints) parts.push(tableHTML('LIVE CHOKEPOINT STATUS',['Chokepoint','Score','Status','War','Congestion'],cp.chokepoints.map(c=>[c.name,c.disruptionScore,c.status,c.warRiskTier,c.congestionLevel])));
+  const sr=ep.shipping_rates;
+  if(sr&&sr.indices) parts.push(tableHTML('SHIPPING RATES',['Index','Name','Value','Change %','Unit'],sr.indices.map(x=>[x.indexId,x.name,x.currentValue,x.changePct,x.unit])));
+  const cq=ep.commodity_quotes;
+  if(cq&&cq.quotes) parts.push(tableHTML('COMMODITY QUOTES',['Symbol','Name','Price','Change'],cq.quotes.map(x=>[x.symbol,x.name,x.price,x.change])));
+  const epz=ep.energy_prices;
+  if(epz&&epz.prices) parts.push(tableHTML('ENERGY PRICES',['Commodity','Name','Price','Unit','Change'],epz.prices.map(x=>[x.commodity,x.name,x.price,x.unit,x.change])));
+  const ms=ep.macro_signals;
+  if(ms) parts.push(`<div class="dsec">MACRO SIGNALS</div><div class="dgrid"><div class="dstat"><label>Bullish</label><b>${ms.bullishCount??'-'}</b></div><div class="dstat"><label>Total</label><b>${ms.totalCount??'-'}</b></div><div class="dstat"><label>Regime</label><b>${esc(ms.signals&&ms.signals.macroRegime?ms.signals.macroRegime.status:'-')}</b></div></div>`);
+  const wc=ep.world_cpi;
+  if(wc&&wc.countries) parts.push(tableHTML('WORLD CPI (latest)',['Country','Period','YoY %','Source'],wc.countries.slice(0,30).map(c=>{const p=(c.periods||[])[-1]||{};const r=p.reading||{};return [c.country,p.period,r.yearOverYear?r.yearOverYear.percent:'-',c.source]})));
+  const fred=ep.fred;
+  if(fred) parts.push(tableHTML('FRED SERIES',['Series','Title','Latest','Date','Units'],Object.entries(fred).map(([k,v])=>{const o=(v.series&&v.series.observations||[]).slice(-1)[0]||{};return [k,v.series?v.series.title:'-',o.value,o.date,v.series?v.units:'-']})));
+  const cci=ep.country_chokepoint_index;
+  if(cci) parts.push(tableHTML('COUNTRY CHOKEPOINT EXPOSURE',['Country','Primary','Exposures'],Object.entries(cci).map(([k,v])=>[k,v.primaryChokepointId||'-',(v.exposures||[]).map(e=>e.chokepointId+':'+(e.exposureScore??'-')).join(', ')])));
+  if(ep.chokepoint_history) parts.push(`<div class="dsec">CHOKEPOINT HISTORY</div><div style="font-size:9px;color:var(--dim);line-height:1.5">${Object.keys(ep.chokepoint_history).length} chokepoints have lazy history loaded. Open a chokepoint to inspect its transit series.</div>`);
+  if(ep.bypass_options) parts.push(`<div class="dsec">BYPASS OPTIONS</div><div style="font-size:9px;color:var(--dim);line-height:1.5">${Object.keys(ep.bypass_options).length} chokepoints have bypass corridors loaded.</div>`);
+  if(L.errors) parts.push(`<div class="dsec">ERRORS</div><ul class="dlist">${Object.entries(L.errors).map(([k,v])=>`<li><span>${esc(k)}</span><span>${esc(v.error||'failed')}</span></li>`).join('')}</ul>`);
+  parts.push(`<div class="dsource">Live data from WorldMonitor API. Key-gated endpoints require a Pro/Enterprise key. Public chokepoint open data and scorecard remain available without a key.</div>`);
+  return parts.join('');
+}
+
+/* ---------------- boot ---------------- */
+function clock(){
+  const now=new Date();
+  const d=now.toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'});
+  const t=now.toLocaleTimeString('en-GB',{timeZone:'Asia/Seoul',hour12:false});
+  $('#clock').textContent=`SEOUL ${d} ${t} KST`;
+}
+function boot(){
+  $('#snap').textContent=U.meta.snapshot_date;
+  $('#built').textContent=U.meta.generated_at;
+  $('#cpchip').textContent=U.chokepoints.items.length+' CHOKEPOINTS';
+  $('#ctrychip').textContent=U.countries.items.filter(x=>x.avg!=null).length+' COUNTRIES';
+  if(U.live){ $('#srcchip').textContent='MI3 LIVE'; $('#srcchip').className='chip live'; $('#srcchip').dataset.entity='live'; $('#srcchip').dataset.id='live'; $('#srcchip').style.cursor='pointer'; $('#modechip').textContent='LIVE DATA'; $('#modechip').className='chip live'; }
+  renderComposite(); renderMap(); renderAlerts(); renderChoketable(); renderFreight(); renderEnergy(); renderMacro(); renderCountries(); renderChain(); renderInsights();
+  attachChartHover(document);
+  clock(); setInterval(clock,1000);
+}
+document.addEventListener('click', e=>{
+  const el=e.target.closest('[data-entity]');
+  if(!el) return;
+  e.preventDefault();
+  openDetail(el.dataset.entity, el.dataset.id);
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeDrawer(); });
+window.openDetail=openDetail; window.closeDrawer=closeDrawer; window.filterCountries=filterCountries;
+boot();
+</script>
+</body>
+</html>

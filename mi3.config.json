@@ -1,0 +1,15 @@
+{
+  "project": "MI3",
+  "name": "MI3 — Global Freight & Trade Intelligence",
+  "version": "0.1.0",
+  "description": "Unified SCM / freight / energy / macro dashboard combining MI2 freight data with WorldMonitor chokepoint and country intelligence.",
+  "data_sources": {
+    "mi2": "../MI2",
+    "worldmonitor": "../worldmonitor"
+  },
+  "output": {
+    "unified": "data/unified.json",
+    "data_js": "data.js",
+    "standalone": "standalone.html"
+  }
+}
