@@ -159,6 +159,49 @@ z(x)       = 1년 z-score; 50 = 1년 평균
 - Brent 94.62 (-8.7%) · WTI 88.12 (-8.3%) · VLSFO Singapore 901.5 $/ton (-4.2%)
 - GSCPI 1.28 · World CPI 3.04% · World GDP 2.92%
 
+
+## 10. GitHub에 올리기 / 배포
+
+### 1) GitHub에서 repo 생성
+- https://github.com/new → 이름 `MI3` → Public → Create.
+- 또는 CLI(gh)가 있으면:
+  ```bash
+  gh repo create JamesJang-GU/MI3 --public --source=. --push
+  ```
+
+### 2) Local MI3 push
+```bash
+cd /home/user/MI3
+git remote add origin https://github.com/JamesJang-GU/MI3.git
+git push -u origin main
+```
+
+### 3) GitHub Pages
+- Settings → Pages → Build and deployment → Source: **Deploy from a branch**
+- Branch: **main** → /(root) → Save
+- URL: `https://jamesjang-gu.github.io/MI3/`
+
+### 4) Daily build workflow (이미 포함됨)
+`.github/workflows/mi3-daily.yml`
+- 매일 **01:00 KST** (`cron: "0 16 * * *"`)
+- MI2 repo clone → WorldMonitor 공개 데이터 fetch → `build.py` → `make_standalone.py` → commit/push
+- MI2의 00:00 KST 크롤링이 끝난 뒤 실행되도록 01:00 KST로 설정
+- `data/world-map.json`은 커밋되어 있으므로 CI에서는 `make_map.py`를 실행하지 않음 (지도 갱신 시에만 로컬에서 실행 후 커밋)
+
+### 5) Live 모드 (선택)
+- GitHub Settings → Secrets and variables → Actions → New repository secret
+  - 이름: `WORLDMONITOR_API_KEY`
+  - 값: `wm_xxx`
+- `.github/workflows/mi3-daily.yml`의 fetch step을 `python3 fetch_worldmonitor.py --public-only` → `python3 fetch_worldmonitor.py`로 변경
+- `data/worldmonitor-live.json`은 `.gitignore`에 포함되어 커밋되지 않지만, `build.py`가 읽어 `data.js`에 live 데이터를 포함함
+- API 한도/비용 모니터링 필요
+
+### 6) 확인
+- `https://jamesjang-gu.github.io/MI3/` 열기
+- 헤더 `MI3 CORE`, 10개 패널, 13개 지도 노드, 196개국 확인
+- 쵸크포인트/지표/국가 클릭 → 상세 drawer
+- Actions 탭에서 `mi3-daily` 실행 로그 확인
+
 ## 9. 한계 / 다음 단계
 
 - **원자재**: MI2에는 유가만 있어 금/구리/리튬 등은 WorldMonitor `list-commodity-quotes` (key)로 보강.
