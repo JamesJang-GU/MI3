@@ -109,6 +109,16 @@ tbody tr:hover{background:#151515}
 
 /* ---------- metric cards ---------- */
 .cards{display:grid;grid-template-columns:1fr 1fr;gap:4px;min-height:0;overflow:auto;flex:1 1 auto}
+.freight .body{display:grid;grid-template-rows:1fr 1fr;gap:5px;padding:5px}
+.freight-group{display:flex;flex-direction:column;gap:3px;min-height:0}
+.freight-group-title{font-size:7.5px;line-height:1;color:#777;letter-spacing:.08em;white-space:nowrap}
+.freight-cards{display:grid;gap:4px;min-height:0;flex:1}
+.freight-cards.primary{grid-template-columns:repeat(3,minmax(0,1fr))}
+.freight-cards.fleet{grid-template-columns:repeat(4,minmax(0,1fr))}
+.freight-cards .card{padding:3px 5px;gap:1px}
+.freight-cards .card .val{font-size:12px}
+.freight-cards .card .spark{height:12px;min-height:10px}
+.freight-cards .card .asof{display:none}
 .cards3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .cards3 .card .val{font-size:12.5px}
 .cards3 .card .spark{height:18px}
@@ -506,8 +516,18 @@ function metricCard(m){
   </article>`;
 }
 function renderFreight(){
-  const ms=U.freight.metrics;
-  $('#freight').innerHTML=`<div class="cards cards4">${ms.map(metricCard).join('')}</div>`;
+  const byId=Object.fromEntries(U.freight.metrics.map(m=>[m.id,m]));
+  const primary=['scfi','bdi','tac'].map(id=>byId[id]).filter(Boolean);
+  const fleet=['fleet_ships','fleet_teu','active_ships','top100_teu'].map(id=>byId[id]).filter(Boolean);
+  $('#freight').innerHTML=`
+    <div class="freight-group">
+      <div class="freight-group-title">FREIGHT INDICES · SCFI / BDI / TAC</div>
+      <div class="freight-cards primary">${primary.map(metricCard).join('')}</div>
+    </div>
+    <div class="freight-group">
+      <div class="freight-group-title">CAPACITY · LINERLYTICA / ALPHALINER</div>
+      <div class="freight-cards fleet">${fleet.map(metricCard).join('')}</div>
+    </div>`;
 }
 function renderEnergy(){
   const ms=U.energy.metrics;
@@ -578,7 +598,17 @@ function zscore(points){
 }
 
 /* ---------------- detail drawer ---------------- */
+const MI2_FREIGHT_DETAIL_PAGES={
+  scfi:'mi2/sea/index.html', bdi:'mi2/sea/index.html',
+  tac:'mi2/air/detail.html',
+  fleet_ships:'mi2/linerlytica/detail.html', fleet_teu:'mi2/linerlytica/detail.html',
+  active_ships:'mi2/alphaliner/detail.html', top100_teu:'mi2/alphaliner/detail.html'
+};
 function openDetail(type,id){
+  if(type==='metric'&&MI2_FREIGHT_DETAIL_PAGES[id]){
+    window.location.href=MI2_FREIGHT_DETAIL_PAGES[id];
+    return;
+  }
   let code='DETAIL', title='', sub='', body='';
   if(type==='chokepoint'){
     const c=cpById(id); if(!c) return;

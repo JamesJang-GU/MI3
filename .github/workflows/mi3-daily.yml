@@ -27,6 +27,16 @@ jobs:
       - name: Clone MI2 data (latest summary.json + SQLite)
         run: git clone --depth 1 https://github.com/JamesJang-GU/MI2.git ../MI2
 
+      - name: Sync MI2 interactive freight detail screens
+        run: |
+          mkdir -p mi2/{sea,air,linerlytica,alphaliner}
+          cp ../MI2/sea/index.html mi2/sea/index.html
+          cp ../MI2/sea/sea_data.json mi2/sea/sea_data.json
+          cp ../MI2/air/detail.html mi2/air/detail.html
+          cp ../MI2/linerlytica/detail.html mi2/linerlytica/detail.html
+          cp ../MI2/alphaliner/detail.html mi2/alphaliner/detail.html
+          sed -i 's|href="../index.html"|href="../../index.html"|g' mi2/sea/index.html mi2/air/detail.html mi2/linerlytica/detail.html mi2/alphaliner/detail.html
+
       - name: Fetch WorldMonitor public data
         run: python3 fetch_worldmonitor.py --public-only
 
