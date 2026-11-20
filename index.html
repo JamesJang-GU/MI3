@@ -515,10 +515,21 @@ function metricCard(m){
     <div class="asof">${esc(m.asof||'')}</div>
   </article>`;
 }
+
+// Regional Trades 카드 렌더링 함수
+function regionalTradeCard(r){
+  return `<article class="card" data-entity="regional-trade" data-id="${esc(r.id)}">
+    <div class="lab">${esc(r.label)}</div>
+    <div class="val">${r.value.toFixed(1)}<em>${esc(r.unit)}</em></div>
+    <div class="source" style="font-size:7px;color:#666;margin-top:2px">${esc(r.source)} · ${esc(r.snapshot_date||'-')}</div>
+  </article>`;
+}
+
 function renderFreight(){
   const byId=Object.fromEntries(U.freight.metrics.map(m=>[m.id,m]));
   const primary=['scfi','bdi','tac'].map(id=>byId[id]).filter(Boolean);
   const fleet=['fleet_ships','fleet_teu','active_ships','top100_teu'].map(id=>byId[id]).filter(Boolean);
+  const regionalTrades = Object.values(U.freight.details.regional_trades || {});
   $('#freight').innerHTML=`
     <div class="freight-group">
       <div class="freight-group-title">FREIGHT INDICES · SCFI / BDI / TAC</div>
@@ -527,6 +538,10 @@ function renderFreight(){
     <div class="freight-group">
       <div class="freight-group-title">CAPACITY · LINERLYTICA / ALPHALINER</div>
       <div class="freight-cards fleet">${fleet.map(metricCard).join('')}</div>
+    </div>
+    <div class="freight-group">
+      <div class="freight-group-title">REGIONAL TRADES · ALPHALINER</div>
+      <div class="freight-cards regional">${regionalTrades.map(regionalTradeCard).join('')}</div>
     </div>`;
 }
 function renderEnergy(){
